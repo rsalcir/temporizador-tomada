@@ -3,39 +3,19 @@
 
 LiquidCrystal_I2C lcd(0x27, 16, 2);
 
-int botao = 1;
-int buzzer = 3;
+int botaoEBuzzer = 1;
 int rele = 4;
 
-int horas;
-int minutos;
-int segundos;
-int tempoTotalEmSegundos;
-int mensagemDeBoasVindas;  
-int frequenciaDoAlarme;  
-int atrasoDoAlarme;
-int atrasoDeUmSegundo; 
-
-void configurarParametrosDeInicializacao(){
-  lcd.init();
-  lcd.backlight();
-  mensagemDeBoasVindas = 0;
-  tempoTotalEmSegundos = 0;
-  frequenciaDoAlarme = 2000;
-  atrasoDoAlarme = 500;
-  atrasoDeUmSegundo = 1000;
-  
-  horas = 0;
-  minutos = 0;
-  segundos = 5;
-}
+boolean exibeMensagemDeBoasVindas = true;   
+int horas = 4;
+int minutos = 0;
+int segundos = 0;
 
 void setup(){
   TinyWireM.begin();
   pinMode(rele, OUTPUT);
-  pinMode(botao, INPUT);
-  pinMode(buzzer, OUTPUT);  
-  configurarParametrosDeInicializacao();
+  lcd.init();
+  lcd.backlight();
 }
 
 void exibirMensagemDeBoasVindas(){
@@ -44,7 +24,6 @@ void exibirMensagemDeBoasVindas(){
   lcd.setCursor(3,1);
   lcd.print("da Beatriz");
   delay(2500);
-  mensagemDeBoasVindas = 1;
   lcd.clear();
 }
 
@@ -77,35 +56,39 @@ void exibirTempoNoLcd(int horasRestantes, int minutosRestantes, int segundosRest
   lcd.print(segundosRestantes);    
 }
 
-void alarmeDeTempoFinalizado(){
-  for(int indice = 0; indice < 4; indice ++){
-    tone(buzzer, frequenciaDoAlarme, atrasoDoAlarme);
-    delay(atrasoDeUmSegundo);
-  }
+void exibirMensagemDeTempoFinalizado(){
+  lcd.clear();
+  lcd.setCursor(5,0);
+  lcd.print("Tempo");
+  lcd.setCursor(3,1);
+  lcd.print("Finalizado!");
 }
 
-void exibirMensagemDeTempoFinalizado(){
-lcd.clear();
-lcd.setCursor(5,0);
-lcd.print("Tempo");
-lcd.setCursor(3,1);
-lcd.print("Finalizado!");
+void alarmeDeTempoFinalizado(){
+  pinMode(botaoEBuzzer, OUTPUT);
+  for(int indice = 0; indice < 4; indice ++){
+    tone(botaoEBuzzer, 2000, 500);
+    exibirMensagemDeTempoFinalizado();
+    delay(1000);
+  }
 }
 
 void loop(){
 
-  boolean iniciarTemporizador = false;
+  pinMode(botaoEBuzzer, INPUT);
+  int tempoTotalEmSegundos = 0;
   
-  if(mensagemDeBoasVindas == 0) {
+  if(exibeMensagemDeBoasVindas) {
     exibirMensagemDeBoasVindas();
+    exibeMensagemDeBoasVindas = false;
   }
-
-  do{
-    exibirMensagemDoMenu();
-    if(digitalRead(botao) == HIGH){
-      iniciarTemporizador = true;
-    }
-  }while(iniciarTemporizador == false);
+  
+  boolean iniciarTemporizador = false;
+  exibirMensagemDoMenu();
+  
+  if(digitalRead(botaoEBuzzer) == HIGH){
+    iniciarTemporizador = true;
+  }
 
   if(iniciarTemporizador){
     int horasRestantes = horas;
@@ -116,7 +99,7 @@ void loop(){
 
     while (tempoTotalEmSegundos > 0){
       digitalWrite(rele, HIGH);
-      delay (atrasoDeUmSegundo);
+      delay (1000);
       tempoTotalEmSegundos--;
 
       horasRestantes = ((tempoTotalEmSegundos / 60)/ 60);
@@ -127,7 +110,6 @@ void loop(){
 
       if (tempoTotalEmSegundos == 0){
          digitalWrite(rele, LOW); 
-         exibirMensagemDeTempoFinalizado();
          tempoTotalEmSegundos = 0;
          iniciarTemporizador = false;
          alarmeDeTempoFinalizado();
